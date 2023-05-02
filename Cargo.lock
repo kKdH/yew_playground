@@ -875,5 +875,6 @@ dependencies = [
 name = "yew_playground"
 version = "0.1.0"
 dependencies = [
+ "gloo-timers",
  "yew",
 ]

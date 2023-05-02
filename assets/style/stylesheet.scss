@@ -5,6 +5,9 @@ $footer-background-color: #88bf8e;
 
 @import "bulma/bulma";
 
+body {
+  height: 100%;
+}
 .blackName {
   color: black;
 }
@@ -12,5 +15,16 @@ $footer-background-color: #88bf8e;
   color: #c84013;
 }
 #projectName {
-  padding: 1em;
+  padding-top: 50px;
+  padding-left: 25px;
+  padding-bottom: 50px;
+  background-color: #88bf8e;
 }
+article {
+  text-align: center;
+}
+p {
+  text-align: center;
+  padding: 20px 0;
+}
+
