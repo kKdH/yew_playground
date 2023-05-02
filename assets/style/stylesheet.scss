@@ -1,0 +1,16 @@
+@charset "utf-8";
+
+
+$footer-background-color: #88bf8e;
+
+@import "bulma/bulma";
+
+.blackName {
+  color: black;
+}
+.redName {
+  color: #c84013;
+}
+#projectName {
+  padding: 1em;
+}
