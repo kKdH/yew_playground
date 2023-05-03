@@ -8,3 +8,5 @@ edition = "2021"
 [dependencies]
 yew = { version = "0.20.0", features = ["csr"] }
 gloo-timers = "0.2.6"
+gloo-file = "0.2.3"
+# plotters = "0.3.1"

@@ -1,7 +1,7 @@
 @charset "utf-8";
 
 
-$footer-background-color: #88bf8e;
+$footer-background-color: #c6f1a6;
 
 @import "bulma/bulma";
 
@@ -15,16 +15,23 @@ body {
   color: #c84013;
 }
 #projectName {
-  padding-top: 50px;
+  text-align: center;
+  font-weight: bold;
+  padding-top: 30px;
   padding-left: 25px;
-  padding-bottom: 50px;
-  background-color: #88bf8e;
+  padding-bottom: 30px;
+  background-color: #c6f1a6;
 }
 article {
   text-align: center;
 }
 p {
-  text-align: center;
   padding: 20px 0;
+}
+.select {
+  padding: 1px 0;
+}
+.box {
+  padding: 0;
 }
 

@@ -1,6 +1,7 @@
 use yew::prelude::*;
 use gloo_timers;
 use gloo_timers::callback::Timeout;
+use gloo_file::*;
 
 #[function_component(App)]
 fn app() -> Html {
@@ -35,31 +36,31 @@ fn app() -> Html {
                         <div class="tile is-ancestor">
                             <div class="tile is-parent">
                                 <article class="tile is-child box">
-                                    <p class="title">{"Wasserstand"}</p>
+                                    <p class="title is-4">{"Wasserstand"}</p>
                                 </article>
                             </div>
                             <div class="tile is-parent">
                                 <article class="tile is-child box">
-                                    <p class="title">{"Helligkeit"}</p>
+                                    <p class="title is-4">{"Helligkeit"}</p>
                                 </article>
                             </div>
                             <div class="tile is-parent">
                                 <article class="tile is-child box">
-                                    <p class="title">{"Gießen"}</p>
-                                    <p class="subtitle is-4">{ "Drücke auf das Bild nach dem Gießen:" }</p>
-                                    <img onclick={watering_action} src={*watering_icon} title="watering can" width="100" height="100"/>
+                                    <p class="title is-4">{"Gießen"}</p>
+                                    <p class="subtitle is-6">{ "Drücke auf das Bild, wenn du die Pflanze gegossen hast, um die Daten zu speichern:" }</p>
+                                    <img onclick={watering_action} src={*watering_icon} alt="watering" title="watering can" width="100" height="100"/>
                                 </article>
                             </div>
                         </div>
                         <div class="tile is-ancestor">
                             <div class="tile is-parent">
                                 <article class="tile is-child box">
-                                    <p class="title">{"History"}</p>
+                                    <p class="title is-4">{"History"}</p>
                                 </article>
                             </div>
                             <div class="tile is-parent">
                                 <article class="tile is-child box">
-                                    <p class="title">{"optional"}</p>
+                                    <p class="title is-4">{"optional"}</p>
                                 </article>
                             </div>
                         </div>
@@ -72,19 +73,37 @@ fn app() -> Html {
                                 </article>
                             </div>
                         </div>
+
+
                         <div class="tile is-ancestor">
                             <div class="tile is-parent">
-                                <article class="tile is-child box">
-                                    <p class="title">{ "submit your plant" }</p>
+                                <article class="tile p-2 is-child box">
+                                    <div class="select is-medium">
+                                        <select>
+                                            <option>{ "plant 1" }</option>
+                                            <option>{ "plant 2" }</option>
+                                        </select>
+                                    </div>
+
                                 </article>
+                                <div class="box p-2">
+                                    { "uploading files" }
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <footer class="footer mt-auto">
-                    <div class="content has-text-centered">
-                        <p>{"footer"}</p>
+                    <div class="content">
+                        <a>{"Hilfe"}</a>
+                        <br/>
+                        <a>{"Privatsphäre"}</a>
+                        <br/>
+                        <a>{"Kontakt"}</a>
+                        <br/>
+                        <a>{"Bedingungen"}</a>
+                        <br/>
                     </div>
                 </footer>
             </div>
