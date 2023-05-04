@@ -10,6 +10,8 @@ members = [
 
 [dependencies]
 yew = { version = "0.20.0", features = ["csr"] }
+yew-router = "0.17.0"
 gloo-timers = "0.2.6"
 gloo-file = "0.2.3"
+gloo-net = "0.2.6"
 # plotters = "0.3.1"

@@ -1,3 +1,4 @@
+/*
 use axum::{
     routing::get,
     Router,
@@ -8,7 +9,67 @@ use axum::extract::{Path, Query};
 use axum::routing::get_service;
 use serde::Deserialize;
 use tower_http::services::ServeDir;
+*/
+use axum::body::{boxed, Body};
+use axum::http::{Response, StatusCode};
+use axum::{response::IntoResponse, routing::get, Router};
+use clap::Parser;
+use std::net::{IpAddr, Ipv6Addr, SocketAddr};
+use std::str::FromStr;
+use tower::{ServiceBuilder, ServiceExt};
+use tower_http::services::ServeDir;
 
+// Setup the command line interface with clap.
+#[derive(Parser, Debug)]
+#[clap(name = "server", about = "A server for our wasm project!")]
+struct Opt {
+    /// set the listen addr
+    #[clap(short = 'a', long = "addr", default_value = "localhost")]
+    addr: String,
+
+    /// set the listen port
+    #[clap(short = 'p', long = "port", default_value = "8080")]
+    port: u16,
+
+    /// set the directory where static files are to be found
+    #[clap(long = "static-dir", default_value = "./dist")]
+    static_dir: String,
+}
+
+#[tokio::main]
+async fn main() {
+    let opt = Opt::parse();
+
+    let app = Router::new()
+        .route("/api/hello", get(hello))
+        .fallback_service(get(|req| async move {
+            match ServeDir::new(opt.static_dir).oneshot(req).await {
+                Ok(res) => res.map(boxed),
+                Err(err) => Response::builder()
+                    .status(StatusCode::INTERNAL_SERVER_ERROR)
+                    .body(boxed(Body::from(format!("error: {err}"))))
+                    .expect("error response"),
+            }
+        }));
+
+    let sock_addr = SocketAddr::from((
+        IpAddr::from_str(opt.addr.as_str()).unwrap_or(IpAddr::V6(Ipv6Addr::LOCALHOST)),
+        opt.port,
+    ));
+
+    println!("listening on http://{}", sock_addr);
+
+    axum::Server::bind(&sock_addr)
+        .serve(app.into_make_service())
+        .await
+        .expect("Unable to start server");
+}
+
+async fn hello() -> impl IntoResponse {
+    "hello from server!"
+}
+
+/*
 #[tokio::main]
 async fn main() {
     // build our application with a single route
@@ -68,3 +129,6 @@ async fn handler_hello(Path(name): Path<String>) -> impl IntoResponse {
 
     format!("Hello {name}, is this working and efficient?")
 }
+
+
+ */
