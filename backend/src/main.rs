@@ -34,13 +34,19 @@ async fn main() {
         .expect("Unable to start server");
 }
 
-async fn hello() -> Json<Plant> {
+async fn hello() -> Json<Vec<Plant>> {
     println!("Hello from Client");
-    let plant = Plant {
-        name: String::from("Silver Birch"),
-        species: String::from("Betula Pendula")
-    };
-    Json(plant)
+
+    Json(vec![
+        Plant {
+            name: String::from("Silver Birch"),
+            species: String::from("Betula Pendula")
+        },
+        Plant {
+            name: String::from("Dandelion"),
+            species: String::from("Taraxacum officinale")
+        }
+    ])
 }
 
 /*

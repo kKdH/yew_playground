@@ -1,11 +1,18 @@
+mod components;
+
 use yew::prelude::*;
 use gloo_timers;
 use gloo_timers::callback::Timeout;
 use gloo_file::*;
 use gloo_net::http::Request;
+use log::info;
 use yew::platform::spawn_local;
 use yew_router::Routable;
 use yew_playground_model::Plant;
+
+use crate::components::Footer;
+use crate::components::PlantView;
+
 
 #[derive(Clone, Routable, PartialEq)]
 enum Route {
@@ -24,136 +31,91 @@ fn switch(routes: Route) -> Html {
 
 #[function_component(App)]
 fn app() -> Html {
-    let watering_icon = use_state(|| "wateringcan.png" );
-    let result = use_state(|| String::from("<unknown>"));
+    let plant_list = use_state(|| Vec::<Plant>::new());
+    let selected_plant = use_state(|| Option::<Plant>::None);
 
-    let watering_action = {
-        let result = Clone::clone(&result);
-        let watering_icon = Clone::clone(&watering_icon);
+    {
+        let plant_list = Clone::clone(&plant_list);
+        use_effect(move || {
+            let plant_list = Clone::clone(&plant_list);
+            if plant_list.is_empty() { // TODO: remove check a soon we known what we do
+                wasm_bindgen_futures::spawn_local(async move {
+                    let plants_endpoint = "/api/hello";
+                    let fetch_plants = Request::get(&plants_endpoint).send().await;
 
-        move |_: MouseEvent| {
-            let result = Clone::clone(&result);
-            let value = "wateringcan3.gif";
-            watering_icon.set(value);
-
-            {
-                let watering_icon = Clone::clone(&watering_icon.clone());
-                Timeout::new(3000, move || watering_icon.set("wateringcan.png"))
-                    .forget();
-            }
-
-            wasm_bindgen_futures::spawn_local(async move {
-                let plants_endpoint = "/api/hello";
-                let fetch_plants = Request::get(&forecast_endpoint).send().await;
-
-
-                match fetch_plants {
-                    Ok(response) => {
-                        let json: Result<Plant, _> = response.json().await;
-                        match json {
-                            Ok(plant) => {
-                                result.set(format!("{}, {}", plant.name, plant.species));
+                    match fetch_plants {
+                        Ok(response) => {
+                            let json: Result<Vec<Plant>, _> = response.json().await;
+                            match json {
+                                Ok(data) => {
+                                    plant_list.set(data);
+                                }
+                                Err(e) => {
+                                    plant_list.set(Vec::new());
+                                },
                             }
-                            Err(e) => {
-                                result.set(format!("Json Error: {}", e));
-                            },
                         }
+                        Err(e) => {
+                            plant_list.set(Vec::new())
+                        },
                     }
-                    Err(e) => {
-                        result.set(String::from("Error"))
-                    },
-                }
-            });
+                });
+            }
+        });
+    }
+
+    let plant_changed_action = {
+        let plant_list = Clone::clone(&plant_list);
+        let selected_plant = Clone::clone(&selected_plant);
+        move |event: Event| {
+            let html_select = event.target_dyn_into::<web_sys::HtmlSelectElement>().unwrap();
+            let plant = Clone::clone(&(*plant_list)[html_select.selected_index() as usize]);
+            let name = Clone::clone(&plant.name);
+            selected_plant.set(Some(plant));
+            info!("Selected plant: {}", name);
         }
     };
 
+
+
     html! {
             <div class="container hero is-fluid is-fullheight">
-
                 <div class="title is-1">
                     <h1 id={ "projectName" }>
                         <span class={ "blackName" }>{ "T" }</span>
                         <span class={ "redName" }>{ "RUST" }</span>
                         <span class={ "blackName" }>{ "Y GARDENER" }</span>
                     </h1>
-                </div>
-                <div class="columns">
-                    <div class="column is-two-thirds">
-                        <div class="subtitle is-3">{"Beschreibung:"}</div>
-                        <div class="tile is-ancestor">
-                            <div class="tile is-parent">
-                                <article class="tile is-child box">
-                                    <p class="title is-4">{"Wasserstand"}</p>
-                                </article>
-                            </div>
-                            <div class="tile is-parent">
-                                <article class="tile is-child box">
-                                    <p class="title is-4">{"Helligkeit"}</p>
-                                </article>
-                            </div>
-                            <div class="tile is-parent">
-                                <article class="tile is-child box">
-                                    <p class="title is-4">{"Gießen"}</p>
-                                    <p class="subtitle is-6">{ "Drücke auf das Bild, wenn du die Pflanze gegossen hast, um die Daten zu speichern:" }</p>
-                                    <img onclick={watering_action} src={*watering_icon} alt="watering" title="watering can" width="100" height="100"/>
-                                </article>
-                            </div>
-                        </div>
-                        <div class="tile is-ancestor">
-                            <div class="tile is-parent">
-                                <article class="tile is-child box">
-                                    <p class="title is-4">{"History"}</p>
-                                </article>
-                            </div>
-                            <div class="tile is-parent">
-                                <article class="tile is-child box">
-                                    <p class="title is-4">{"optional"}</p>
-                                </article>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="column">
-                        <div class="tile is-ancestor">
-                            <div class="tile is-parent">
-                                <article class="tile is-child box">
-                                    <img src="plant1.png" alt="a plant" />
-                                </article>
-                            </div>
-                        </div>
-
-
-                        <div class="tile is-ancestor">
-                            <div class="tile is-parent">
-                                <article class="tile p-2 is-child box">
-                                    <div class="select is-medium">
-                                        <select>
-                                            <option>{ "plant 1" }</option>
-                                            <option>{ "plant 2" }</option>
-                                        </select>
-                                    </div>
-
-                                </article>
-                                <div class="box p-2">
-                                    { "uploading files" }
+                    <div class="tile is-ancestor">
+                        <div class="tile is-parent">
+                            <article class="tile p-2 is-child box">
+                                <div class="select is-medium">
+                                    <select onchange={plant_changed_action}>
+                                        {
+                                            for plant_list.iter().cloned().map(|plant| {
+                                                html_nested!{<option value={Clone::clone(&plant.name)}>{plant.name}</option>}
+                                            })
+                                        }
+                                    </select>
                                 </div>
+                            </article>
+                            <div class="box p-2 subtitle">
+                                { "uploading files" }
                             </div>
                         </div>
                     </div>
                 </div>
+                {
+                    if let Some(plant) = selected_plant.as_ref() {
+                        html_nested!{<div><PlantView plant={Clone::clone(plant)}></PlantView></div>}
+                    }
+                    else {
+                        html_nested!{<div></div>}
+                    }
+                }
 
-                <footer class="footer mt-auto">
-                    <div>{result.as_str()}</div>
-                    <div class="content">
-                        <a href="https://media.tenor.com/JHePvU1xhFgAAAAM/pump-crypto.gif">{"Hilfe"}</a>
-                        <br/>
-                        <a href="https://images.wagwalkingweb.com/media/daily_wag/behavior_guides/hero/1629934048.5675797/he-gong-kbuycu1swik-unsplash.jpg">{"Privatsphäre"}</a>
-                        <br/>
-                        <a href="https://media.tenor.com/YGWxkk8hm7UAAAAd/cat-telephone-cat.gif">{"Kontakt"}</a>
-                        <br/>
-                        <a href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRAfL6JExBpyNxNEIpTcxhYVySM3yOmopdNpUqnL8_eIgXLvtXChBfBvoDrs7u8_E3nhBs&usqp=CAU">{"Bedingungen"}</a>
-                        <br/>
-                    </div>
-                </footer>
+
+                <Footer></Footer>
             </div>
     }
 }
@@ -208,5 +170,7 @@ fn hello_server() -> Html {
 }
 
 fn main() {
+    wasm_logger::init(wasm_logger::Config::default());
+    info!("trusty gardener");
     yew::Renderer::<App>::new().render();
 }
