@@ -1,49 +1,19 @@
-/*
-use axum::{
-    routing::get,
-    Router,
-};
-use axum::response::{Html, IntoResponse};
-use axum::{body::Bytes, http::StatusCode};
-use axum::extract::{Path, Query};
-use axum::routing::get_service;
-use serde::Deserialize;
-use tower_http::services::ServeDir;
-*/
 use axum::body::{boxed, Body};
 use axum::http::{Response, StatusCode};
-use axum::{response::IntoResponse, routing::get, Router};
-use clap::Parser;
-use std::net::{IpAddr, Ipv6Addr, SocketAddr};
+use axum::{response::IntoResponse, routing::get, Router, Json};
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV6};
 use std::str::FromStr;
 use tower::{ServiceBuilder, ServiceExt};
 use tower_http::services::ServeDir;
+use yew_playground_model::Plant;
 
-// Setup the command line interface with clap.
-#[derive(Parser, Debug)]
-#[clap(name = "server", about = "A server for our wasm project!")]
-struct Opt {
-    /// set the listen addr
-    #[clap(short = 'a', long = "addr", default_value = "localhost")]
-    addr: String,
-
-    /// set the listen port
-    #[clap(short = 'p', long = "port", default_value = "8080")]
-    port: u16,
-
-    /// set the directory where static files are to be found
-    #[clap(long = "static-dir", default_value = "./dist")]
-    static_dir: String,
-}
 
 #[tokio::main]
 async fn main() {
-    let opt = Opt::parse();
-
     let app = Router::new()
         .route("/api/hello", get(hello))
         .fallback_service(get(|req| async move {
-            match ServeDir::new(opt.static_dir).oneshot(req).await {
+            match ServeDir::new(String::from("dist")).oneshot(req).await {
                 Ok(res) => res.map(boxed),
                 Err(err) => Response::builder()
                     .status(StatusCode::INTERNAL_SERVER_ERROR)
@@ -52,21 +22,25 @@ async fn main() {
             }
         }));
 
-    let sock_addr = SocketAddr::from((
-        IpAddr::from_str(opt.addr.as_str()).unwrap_or(IpAddr::V6(Ipv6Addr::LOCALHOST)),
-        opt.port,
-    ));
+    let socket_address = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 9090);
 
-    println!("listening on http://{}", sock_addr);
 
-    axum::Server::bind(&sock_addr)
+
+    println!("listening on http://{}", socket_address);
+
+    axum::Server::bind(&socket_address)
         .serve(app.into_make_service())
         .await
         .expect("Unable to start server");
 }
 
-async fn hello() -> impl IntoResponse {
-    "hello from server!"
+async fn hello() -> Json<Plant> {
+    println!("Hello from Client");
+    let plant = Plant {
+        name: String::from("Silver Birch"),
+        species: String::from("Betula Pendula")
+    };
+    Json(plant)
 }
 
 /*
@@ -114,7 +88,7 @@ struct HelloParams {
     name: Option<String>,
 }
 
-// localhost:8080/?nam=Jan -> begrüßt Jan
+// localhost:8080/?name=Jan -> begrüßt Jan
 async fn handler_main(Query(params): Query<HelloParams>) -> impl IntoResponse {
     println!("->> {:<12} - handler_main - {params:?}", "HANDLER");
 

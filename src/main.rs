@@ -5,6 +5,7 @@ use gloo_file::*;
 use gloo_net::http::Request;
 use yew::platform::spawn_local;
 use yew_router::Routable;
+use yew_playground_model::Plant;
 
 #[derive(Clone, Routable, PartialEq)]
 enum Route {
@@ -24,9 +25,14 @@ fn switch(routes: Route) -> Html {
 #[function_component(App)]
 fn app() -> Html {
     let watering_icon = use_state(|| "wateringcan.png" );
+    let result = use_state(|| String::from("<unknown>"));
+
     let watering_action = {
+        let result = Clone::clone(&result);
         let watering_icon = Clone::clone(&watering_icon);
+
         move |_: MouseEvent| {
+            let result = Clone::clone(&result);
             let value = "wateringcan3.gif";
             watering_icon.set(value);
 
@@ -35,6 +41,29 @@ fn app() -> Html {
                 Timeout::new(3000, move || watering_icon.set("wateringcan.png"))
                     .forget();
             }
+
+            wasm_bindgen_futures::spawn_local(async move {
+                let plants_endpoint = "/api/hello";
+                let fetch_plants = Request::get(&forecast_endpoint).send().await;
+
+
+                match fetch_plants {
+                    Ok(response) => {
+                        let json: Result<Plant, _> = response.json().await;
+                        match json {
+                            Ok(plant) => {
+                                result.set(format!("{}, {}", plant.name, plant.species));
+                            }
+                            Err(e) => {
+                                result.set(format!("Json Error: {}", e));
+                            },
+                        }
+                    }
+                    Err(e) => {
+                        result.set(String::from("Error"))
+                    },
+                }
+            });
         }
     };
 
@@ -113,6 +142,7 @@ fn app() -> Html {
                 </div>
 
                 <footer class="footer mt-auto">
+                    <div>{result.as_str()}</div>
                     <div class="content">
                         <a href="https://media.tenor.com/JHePvU1xhFgAAAAM/pump-crypto.gif">{"Hilfe"}</a>
                         <br/>
