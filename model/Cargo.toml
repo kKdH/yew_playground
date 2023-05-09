@@ -5,3 +5,5 @@ edition = "2021"
 
 [dependencies]
 serde = "1.0.162"
+chrono = { version = "0.4.24", features = ["serde"] }
+

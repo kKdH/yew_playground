@@ -1,17 +1,21 @@
 use axum::body::{boxed, Body};
 use axum::http::{Response, StatusCode};
-use axum::{response::IntoResponse, routing::get, Router, Json};
+use axum::{response::IntoResponse, routing::{get, post}, Router, Json};
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV6};
 use std::str::FromStr;
+use axum::extract::Path;
+use chrono::DateTime;
 use tower::{ServiceBuilder, ServiceExt};
 use tower_http::services::ServeDir;
-use yew_playground_model::Plant;
+use yew_playground_model::{Plant, PlantWateringHistory, WateringEvent};
 
 
 #[tokio::main]
 async fn main() {
     let app = Router::new()
-        .route("/api/hello", get(hello))
+        .route("/api/plants", get(plants_handler))
+        .route("/api/plant/:name/watering", post(watering_handler))
+        .route("/api/plant/:name/waterlevel", get(waterlevel_handler))
         .fallback_service(get(|req| async move {
             match ServeDir::new(String::from("dist")).oneshot(req).await {
                 Ok(res) => res.map(boxed),
@@ -34,7 +38,7 @@ async fn main() {
         .expect("Unable to start server");
 }
 
-async fn hello() -> Json<Vec<Plant>> {
+async fn plants_handler() -> Json<Vec<Plant>> {
     println!("Hello from Client");
 
     Json(vec![
@@ -47,6 +51,23 @@ async fn hello() -> Json<Vec<Plant>> {
             species: String::from("Taraxacum officinale")
         }
     ])
+}
+
+async fn watering_handler(Path(name): Path<String>) {
+    println!("Watering {:?}", name);
+}
+
+async fn waterlevel_handler(Path(name): Path<String>) -> Json<PlantWateringHistory> {
+    Json(PlantWateringHistory {
+        history: vec![
+            WateringEvent {
+                timestamp: DateTime::default()
+            },
+            WateringEvent {
+                timestamp: DateTime::default()
+            }
+        ]
+    })
 }
 
 /*
@@ -109,6 +130,5 @@ async fn handler_hello(Path(name): Path<String>) -> impl IntoResponse {
 
     format!("Hello {name}, is this working and efficient?")
 }
-
 
  */

@@ -13,22 +13,6 @@ use yew_playground_model::Plant;
 use crate::components::Footer;
 use crate::components::PlantView;
 
-
-#[derive(Clone, Routable, PartialEq)]
-enum Route {
-    #[at("/")]
-    Home,
-    #[at("/hello-server")]
-    HelloServer,
-}
-
-fn switch(routes: Route) -> Html {
-    match routes {
-        Route::Home => html! { <h1>{ "Hello Frontend" }</h1> },
-        Route::HelloServer => html! { <HelloServer /> },
-    }
-}
-
 #[function_component(App)]
 fn app() -> Html {
     let plant_list = use_state(|| Vec::<Plant>::new());
@@ -36,18 +20,22 @@ fn app() -> Html {
 
     {
         let plant_list = Clone::clone(&plant_list);
+        let selected_plant = Clone::clone(&selected_plant);
         use_effect(move || {
             let plant_list = Clone::clone(&plant_list);
+            let selected_plant = Clone::clone(&selected_plant);
             if plant_list.is_empty() { // TODO: remove check a soon we known what we do
                 wasm_bindgen_futures::spawn_local(async move {
-                    let plants_endpoint = "/api/hello";
+                    let plants_endpoint = "/api/plants";
                     let fetch_plants = Request::get(&plants_endpoint).send().await;
 
                     match fetch_plants {
                         Ok(response) => {
                             let json: Result<Vec<Plant>, _> = response.json().await;
+
                             match json {
                                 Ok(data) => {
+                                    selected_plant.set(Some(Clone::clone(&data[data.len() - 1])));
                                     plant_list.set(data);
                                 }
                                 Err(e) => {
@@ -117,55 +105,6 @@ fn app() -> Html {
 
                 <Footer></Footer>
             </div>
-    }
-}
-
-#[function_component(HelloServer)]
-fn hello_server() -> Html {
-    let data = use_state(|| None);
-
-    // Request `/api/hello` once
-    {
-        let data = data.clone();
-        use_effect(move || {
-            if data.is_none() {
-                spawn_local(async move {
-                    let resp = Request::get("/api/hello").send().await.unwrap();
-                    let result = {
-                        if !resp.ok() {
-                            Err(format!(
-                                "Error fetching data {} ({})",
-                                resp.status(),
-                                resp.status_text()
-                            ))
-                        } else {
-                            resp.text().await.map_err(|err| err.to_string())
-                        }
-                    };
-                    data.set(Some(result));
-                });
-            }
-
-            || {}
-        });
-    }
-
-    match data.as_ref() {
-        None => {
-            html! {
-                <div>{"No server response"}</div>
-            }
-        }
-        Some(Ok(data)) => {
-            html! {
-                <div>{"Got server response: "}{data}</div>
-            }
-        }
-        Some(Err(err)) => {
-            html! {
-                <div>{"Error requesting data from server: "}{err}</div>
-            }
-        }
     }
 }
 

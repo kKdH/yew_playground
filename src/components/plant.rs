@@ -1,7 +1,14 @@
+use std::borrow::Cow;
 use gloo_timers::callback::Timeout;
+use log::{error, info};
+use reqwasm::Error;
+use reqwasm::http::Request;
 use yew::{Html, html};
 use yew::prelude::*;
-use yew_playground_model::Plant;
+use yew_playground_model::{Plant, PlantWateringHistory};
+
+const wateringcan_a: &'static str = "wateringcan.png";
+const wateringcan_b: &'static str = "wateringcan3.gif";
 
 #[derive(Properties, PartialEq)]
 pub struct Props {
@@ -11,21 +18,60 @@ pub struct Props {
 #[function_component(PlantView)]
 pub fn plant_view(props: &Props) -> Html {
     let name = Clone::clone(&props.plant.name);
-    let watering_icon = use_state(|| "wateringcan.png" );
+    let watering_icon = use_state(|| wateringcan_a);
 
     let watering_action = {
         let watering_icon = Clone::clone(&watering_icon);
+        let name = Clone::clone(&name);
         move |_: MouseEvent| {
-            let value = "wateringcan3.gif";
-            watering_icon.set(value);
-
+            let name = Clone::clone(&name);
+            watering_icon.set(wateringcan_b);
             {
                 let watering_icon = Clone::clone(&watering_icon.clone());
-                Timeout::new(3000, move || watering_icon.set("wateringcan.png"))
+                Timeout::new(3000, move || watering_icon.set(wateringcan_a))
                     .forget();
             }
+            wasm_bindgen_futures::spawn_local(async move {
+                let plants_endpoint = format!("/api/plant/{}/watering", name);
+                let result = Request::post(&plants_endpoint).send().await;
+
+                match result {
+                    Ok(response) => {
+                        info!("Watered {}", name);
+                    }
+                    Err(e) => {
+                        error!("Failed to water plant: {}", name);
+                    },
+                }
+            });
         }
     };
+    {
+        let name = Clone::clone(&name);
+        use_effect(move || {
+            wasm_bindgen_futures::spawn_local(async move {
+                let plants_endpoint = format!("/api/plant/{}/waterlevel", name);
+                let result = Request::get(&plants_endpoint).send().await;
+
+                match result {
+                    Ok(response) => {
+                        let json: Result<PlantWateringHistory, _> = response.json().await;
+                        match json {
+                            Ok(watering_history) => {
+                                info!("history: {:?}", watering_history);
+                            }
+                            Err(_) => {
+                                error!("Failed to parse history");
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        error!("Failed to fetch watering history: {}", name);
+                    },
+                }
+            });
+        });
+    }
 
     html! {
         <div class="columns">
