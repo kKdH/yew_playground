@@ -1,4 +1,5 @@
 mod components;
+mod api;
 
 use yew::prelude::*;
 use gloo_timers;

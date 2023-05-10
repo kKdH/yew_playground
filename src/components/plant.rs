@@ -23,89 +23,66 @@ pub struct Counter {
 pub fn plant_view(props: &Props) -> Html {
     let name = Clone::clone(&props.plant.name);
     let watering_icon = use_state(|| wateringcan_a);
-    let watering_counter = use_state_eq(|| Counter {
-        value: 0
-    });
+    let watering_history = use_state_eq(|| PlantWateringHistory::default());
 
     let watering_action = {
-            let watering_icon = Clone::clone(&watering_icon);
+        let watering_icon = Clone::clone(&watering_icon);
+        let name = Clone::clone(&name);
+        move |_: MouseEvent| {
             let name = Clone::clone(&name);
-            move |_: MouseEvent| {
-                let name = Clone::clone(&name);
-                watering_icon.set(wateringcan_b);
-                {
-                    let watering_icon = Clone::clone(&watering_icon.clone());
-                    Timeout::new(3000, move || {
-                        watering_icon.set(wateringcan_a);
-                    }).forget();
-                }
-                wasm_bindgen_futures::spawn_local(async move {
-                    let plants_endpoint = format!("/api/plant/{}/watering", name);
-                    let result = Request::post(&plants_endpoint).send().await;
-
-                    match result {
-                        Ok(response) => {
-
-                            info!("Watered {}", name);
-                        }
-                        Err(e) => {
-                            error!("Failed to water plant: {}", name);
-                        },
-                    }
-                });
+            watering_icon.set(wateringcan_b);
+            {
+                let watering_icon = Clone::clone(&watering_icon.clone());
+                Timeout::new(3000, move || {
+                    watering_icon.set(wateringcan_a);
+                }).forget();
             }
-
+            crate::api::do_watering(Clone::clone(&name), move |result| {
+                match result {
+                    Ok(_) => {
+                        info!("Watered {}", name);
+                    }
+                    Err(_) => {
+                        error!("Failed to water plant: {}", name);
+                    }
+                }
+            });
+        }
     };
 
     let clear_watering_history = {
         let name = Clone::clone(&name);
+        let watering_history = Clone::clone(&watering_history);
         move |_: MouseEvent| {
             let name = Clone::clone(&name);
-
-            wasm_bindgen_futures::spawn_local(async move {
-                let plants_endpoint = format!("/api/plant/{}/watering_history", name);
-                let result = Request::delete(&plants_endpoint).send().await;
-
+            let watering_history = Clone::clone(&watering_history);
+            crate::api::clear_watering_history(Clone::clone(&name), move |result| {
                 match result {
-                    Ok(response) => {
-
+                    Ok(_) => {
+                        watering_history.set(PlantWateringHistory::default());
                         info!("Cleared history of plant: {}", name);
                     }
-                    Err(e) => {
+                    Err(_) => {
                         error!("Failed to delete history of plant: {}", name);
-                    },
+                    }
                 }
             });
         }
-
     };
     {
         let name = Clone::clone(&name);
-        let watering_counter = Clone::clone(&watering_counter);
+        let watering_history = Clone::clone(&watering_history);
         use_effect(move || {
-            let watering_counter = Clone::clone(&watering_counter);
-            wasm_bindgen_futures::spawn_local(async move {
-                let plants_endpoint = format!("/api/plant/{}/watering_history", name);
-                let result = Request::get(&plants_endpoint).send().await;
-
+            let watering_history = Clone::clone(&watering_history);
+            crate::api::get_history(Clone::clone(&name), move |result| {
                 match result {
-                    Ok(response) => {
-                        let json: Result<PlantWateringHistory, _> = response.json().await;
-                        match json {
-                            Ok(watering_history) => {
-                                watering_counter.set(Counter{
-                                    value: watering_history.history.len() as i64
-                                });
-                                info!("history: {:?}", watering_history);
-                            }
-                            Err(_) => {
-                                error!("Failed to parse history");
-                            }
-                        }
+                    Ok(new_watering_history) => {
+                        watering_history.set(new_watering_history);
+                        info!("history: {:?}", watering_history);
                     }
-                    Err(e) => {
+                    Err(_) => {
                         error!("Failed to fetch watering history: {}", name);
-                    },
+                    }
                 }
             });
         });
@@ -130,7 +107,7 @@ pub fn plant_view(props: &Props) -> Html {
                         <article class="tile is-child box">
                             <p class="title is-4">{"Gießen"}</p>
                             <p class="subtitle is-6">{ "Drücke auf das Bild, wenn du die Pflanze gegossen hast, um die Daten zu speichern:" }</p>
-                            <p>{ (*watering_counter).value }</p>
+                            <p>{ (*watering_history).history.len() }</p>
                             <img onclick={watering_action} src={*watering_icon} alt="watering" title="watering can" width="100" height="100"/>
                         </article>
                     </div>

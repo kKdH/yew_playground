@@ -1773,6 +1773,7 @@ dependencies = [
  "gloo-timers",
  "log",
  "reqwasm",
+ "thiserror",
  "wasm-bindgen-futures",
  "wasm-logger",
  "web-sys",
