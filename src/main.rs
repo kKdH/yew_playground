@@ -16,8 +16,8 @@ use crate::components::PlantView;
 
 #[function_component(App)]
 fn app() -> Html {
-    let plant_list = use_state(|| Vec::<Plant>::new());
-    let selected_plant = use_state(|| Option::<Plant>::None);
+    let plant_list = use_state_eq(|| Vec::<Plant>::new());
+    let selected_plant = use_state_eq(|| Option::<Plant>::None);
 
     {
         let plant_list = Clone::clone(&plant_list);
@@ -35,9 +35,11 @@ fn app() -> Html {
                             let json: Result<Vec<Plant>, _> = response.json().await;
 
                             match json {
-                                Ok(data) => {
-                                    selected_plant.set(Some(Clone::clone(&data[data.len() - 1])));
-                                    plant_list.set(data);
+                                Ok(plants) => {
+                                    if !plants.is_empty() {
+                                        selected_plant.set(Some(Clone::clone(&plants[plants.len() - 1])));
+                                    }
+                                    plant_list.set(plants);
                                 }
                                 Err(e) => {
                                     plant_list.set(Vec::new());
