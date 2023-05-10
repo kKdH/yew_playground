@@ -14,38 +14,65 @@ const wateringcan_b: &'static str = "wateringcan3.gif";
 pub struct Props {
     pub plant: Plant
 }
+pub struct Model {
+    pub value: i64
+}
 
 #[function_component(PlantView)]
 pub fn plant_view(props: &Props) -> Html {
     let name = Clone::clone(&props.plant.name);
     let watering_icon = use_state(|| wateringcan_a);
+    let state = use_state(|| Model {
+        value: 0
+    });
 
     let watering_action = {
-        let watering_icon = Clone::clone(&watering_icon);
-        let name = Clone::clone(&name);
-        move |_: MouseEvent| {
+            let watering_icon = Clone::clone(&watering_icon);
             let name = Clone::clone(&name);
-            watering_icon.set(wateringcan_b);
-            {
-                let watering_icon = Clone::clone(&watering_icon.clone());
-                Timeout::new(3000, move || watering_icon.set(wateringcan_a))
-                    .forget();
-            }
-            wasm_bindgen_futures::spawn_local(async move {
-                let plants_endpoint = format!("/api/plant/{}/watering", name);
-                let result = Request::post(&plants_endpoint).send().await;
-
-                match result {
-                    Ok(response) => {
-                        info!("Watered {}", name);
+            let state = Clone::clone(&state);
+            move |_: MouseEvent| {
+                let name = Clone::clone(&name);
+                watering_icon.set(wateringcan_b);
+                {
+                    let watering_icon = Clone::clone(&watering_icon.clone());
+                    let state = Clone::clone(&state);
+                    Timeout::new(3000, move || {
+                        watering_icon.set(wateringcan_a);
+                    state.set(Model {
+                        value: (state.value) + 1});
                     }
-                    Err(e) => {
-                        error!("Failed to water plant: {}", name);
-                    },
+                    ).forget();
+
+
+                    //hier muss der counter hochgesetzt werden?
                 }
-            });
-        }
+                wasm_bindgen_futures::spawn_local(async move {
+                    let plants_endpoint = format!("/api/plant/{}/watering", name);
+                    let result = Request::post(&plants_endpoint).send().await;
+
+                    match result {
+                        Ok(response) => {
+                            info!("Watered {}", name);
+                        }
+                        Err(e) => {
+                            error!("Failed to water plant: {}", name);
+                        },
+                    }
+                });
+            }
+
     };
+    /*
+    let onclick = {
+        let state = Clone::clone(&state);
+
+        Callback::from(move |_: MouseEvent| {
+            state.set(Model {
+                value: (state.value) + 1})
+        })
+    };
+
+     */
     {
         let name = Clone::clone(&name);
         use_effect(move || {
@@ -92,6 +119,7 @@ pub fn plant_view(props: &Props) -> Html {
                         <article class="tile is-child box">
                             <p class="title is-4">{"Gießen"}</p>
                             <p class="subtitle is-6">{ "Drücke auf das Bild, wenn du die Pflanze gegossen hast, um die Daten zu speichern:" }</p>
+                            <p>{ state.value }</p>
                             <img onclick={watering_action} src={*watering_icon} alt="watering" title="watering can" width="100" height="100"/>
                         </article>
                     </div>
