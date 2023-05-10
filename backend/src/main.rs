@@ -1,21 +1,35 @@
+use std::collections::HashMap;
 use axum::body::{boxed, Body};
-use axum::http::{Response, StatusCode};
+use axum::http::{StatusCode};
 use axum::{response::IntoResponse, routing::{get, post}, Router, Json};
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV6};
 use std::str::FromStr;
-use axum::extract::Path;
+use std::sync::{Arc, RwLock};
+use axum::extract::{Path, State};
+use axum::response::Response;
 use chrono::DateTime;
 use tower::{ServiceBuilder, ServiceExt};
 use tower_http::services::ServeDir;
 use yew_playground_model::{Plant, PlantWateringHistory, WateringEvent};
 
+#[derive(Clone)]
+struct AppState {
+    watering_histories: HashMap<String, PlantWateringHistory>
+}
 
 #[tokio::main]
 async fn main() {
+    let state = Arc::new(RwLock::new(AppState {
+        watering_histories: HashMap::new()
+    }));
     let app = Router::new()
         .route("/api/plants", get(plants_handler))
         .route("/api/plant/:name/watering", post(watering_handler))
-        .route("/api/plant/:name/waterlevel", get(waterlevel_handler))
+        .route(
+            "/api/plant/:name/watering_history",
+            get(watering_history_handler)
+                .delete(delete_watering_history_handler)
+        )
         .fallback_service(get(|req| async move {
             match ServeDir::new(String::from("dist")).oneshot(req).await {
                 Ok(res) => res.map(boxed),
@@ -24,7 +38,8 @@ async fn main() {
                     .body(boxed(Body::from(format!("error: {err}"))))
                     .expect("error response"),
             }
-        }));
+        }))
+        .with_state(state);
 
     let socket_address = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 9090);
 
@@ -51,23 +66,50 @@ async fn plants_handler() -> Json<Vec<Plant>> {
             species: String::from("Taraxacum officinale")
         }
     ])
+
 }
 
-async fn watering_handler(Path(name): Path<String>) {
+async fn watering_handler(Path(name): Path<String>, State(state): State<Arc<RwLock<AppState>>>) {
     println!("Watering {:?}", name);
+    let mut state = state.write().unwrap();
+    let event = WateringEvent {
+        timestamp: DateTime::default()
+    };
+    match state.watering_histories.get_mut(&name) {
+        None => {
+            state.watering_histories.insert(name, PlantWateringHistory {
+                history: vec![event]
+            });
+        }
+        Some(watering_history) => {
+            watering_history.history.push(event)
+        }
+    }
 }
 
-async fn waterlevel_handler(Path(name): Path<String>) -> Json<PlantWateringHistory> {
-    Json(PlantWateringHistory {
-        history: vec![
-            WateringEvent {
-                timestamp: DateTime::default()
-            },
-            WateringEvent {
-                timestamp: DateTime::default()
-            }
-        ]
-    })
+async fn watering_history_handler(Path(name): Path<String>, State(state): State<Arc<RwLock<AppState>>>) -> Response {
+    let mut state = state.read().unwrap();
+    match state.watering_histories.get(&name) {
+        None => {
+            (StatusCode::NOT_FOUND, format!("Unknown Plant: {name}")).into_response()
+        }
+        Some(watering_history) => {
+            (StatusCode::OK, Json(watering_history)).into_response()
+        }
+    }
+}
+
+async fn delete_watering_history_handler(Path(name): Path<String>, State(state): State<Arc<RwLock<AppState>>>) -> Response {
+    let mut state = state.write().unwrap();
+    match state.watering_histories.get_mut(&name) {
+        None => {
+            (StatusCode::NOT_FOUND, format!("Unknown Plant: {name}")).into_response()
+        }
+        Some(watering_history) => {
+            watering_history.history.clear();
+            StatusCode::OK.into_response()
+        }
+    }
 }
 
 /*
