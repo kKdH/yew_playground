@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use axum::body::{boxed, Body};
 use axum::http::{StatusCode};
-use axum::{response::IntoResponse, routing::{get, post}, Router, Json};
+use axum::{response::IntoResponse, routing::{get, post, put}, Router, Json};
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV6};
 use std::str::FromStr;
 use std::sync::{Arc, RwLock};
@@ -14,16 +14,24 @@ use yew_playground_model::{Plant, PlantWateringHistory, WateringEvent};
 
 #[derive(Clone)]
 struct AppState {
+    plants: HashMap<String, Plant>,
     watering_histories: HashMap<String, PlantWateringHistory>
 }
+
+type SharedAppState = State<Arc<RwLock<AppState>>>;
 
 #[tokio::main]
 async fn main() {
     let state = Arc::new(RwLock::new(AppState {
-        watering_histories: HashMap::new()
+        plants: HashMap::new(),
+        watering_histories: HashMap::new(),
     }));
     let app = Router::new()
-        .route("/api/plants", get(plants_handler))
+        .route(
+            "/api/plant",
+            get(plants_handler)
+                .put(create_plant_handler)
+        )
         .route("/api/plant/:name/watering", post(watering_handler))
         .route(
             "/api/plant/:name/watering_history",
@@ -53,23 +61,21 @@ async fn main() {
         .expect("Unable to start server");
 }
 
-async fn plants_handler() -> Json<Vec<Plant>> {
-    println!("Hello from Client");
+async fn plants_handler(State(state): SharedAppState) -> Json<Vec<Plant>> {
+    let state = state.read().unwrap();
 
-    Json(vec![
-        Plant {
-            name: String::from("Silver Birch"),
-            species: String::from("Betula Pendula")
-        },
-        Plant {
-            name: String::from("Dandelion"),
-            species: String::from("Taraxacum officinale")
-        }
-    ])
-
+    Json(state.plants.values().cloned().collect())
 }
 
-async fn watering_handler(Path(name): Path<String>, State(state): State<Arc<RwLock<AppState>>>) {
+async fn create_plant_handler(State(state): SharedAppState, Json(plant): Json<Plant>) -> Response {
+    println!("Created new plant: {:?}", plant.name);
+    let mut state = state.write().unwrap();
+    state.watering_histories.insert(Clone::clone(&plant.name), PlantWateringHistory::default());
+    state.plants.insert(Clone::clone(&plant.name), plant);
+    StatusCode::CREATED.into_response()
+}
+
+async fn watering_handler(Path(name): Path<String>, State(state): SharedAppState) {
     println!("Watering {:?}", name);
     let mut state = state.write().unwrap();
     let event = WateringEvent {
@@ -87,7 +93,7 @@ async fn watering_handler(Path(name): Path<String>, State(state): State<Arc<RwLo
     }
 }
 
-async fn watering_history_handler(Path(name): Path<String>, State(state): State<Arc<RwLock<AppState>>>) -> Response {
+async fn watering_history_handler(Path(name): Path<String>, State(state): SharedAppState) -> Response {
     let mut state = state.read().unwrap();
     match state.watering_histories.get(&name) {
         None => {
@@ -99,7 +105,7 @@ async fn watering_history_handler(Path(name): Path<String>, State(state): State<
     }
 }
 
-async fn delete_watering_history_handler(Path(name): Path<String>, State(state): State<Arc<RwLock<AppState>>>) -> Response {
+async fn delete_watering_history_handler(Path(name): Path<String>, State(state): SharedAppState) -> Response {
     let mut state = state.write().unwrap();
     match state.watering_histories.get_mut(&name) {
         None => {

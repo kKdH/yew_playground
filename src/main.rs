@@ -27,7 +27,7 @@ fn app() -> Html {
             let selected_plant = Clone::clone(&selected_plant);
             if plant_list.is_empty() { // TODO: remove check a soon we known what we do
                 wasm_bindgen_futures::spawn_local(async move {
-                    let plants_endpoint = "/api/plants";
+                    let plants_endpoint = "/api/plant";
                     let fetch_plants = Request::get(&plants_endpoint).send().await;
 
                     match fetch_plants {
