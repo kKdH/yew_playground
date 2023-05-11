@@ -1,8 +1,7 @@
 use gloo_timers::callback::Timeout;
-use log::{error, info};
 use yew::{Html, html};
 use yew::prelude::*;
-use yew_hooks::{use_async, use_effect_once};
+use yew_hooks::{use_async};
 
 use yew_playground_model::Plant;
 use crate::api;
@@ -24,27 +23,30 @@ pub fn plant_view(props: &Props) -> Html {
 
     let name = Clone::clone(&props.plant.name);
     let watering_icon = use_state(|| WATERING_CAN_STATIC);
-
-    let async_watering_history = {
+    let async_watering = {
+        let name = Clone::clone(&name);
+        use_async(api::do_watering(name))
+    };
+    let async_get_watering_history = {
         let name = Clone::clone(&props.plant.name);
         use_async(api::get_watering_history(name))
     };
+    let async_clear_watering_history = {
+        let name = Clone::clone(&name);
+        use_async(api::clear_watering_history(name))
+    };
 
     {
-        let async_watering_history = Clone::clone(&async_watering_history);
-        use_effect_once(move || {
-            async_watering_history.run();
-            || {}
-        });
+        let async_get_watering_history = Clone::clone(&async_get_watering_history);
+        use_effect_with_deps(move |_| {
+            async_get_watering_history.run();
+        }, Clone::clone(&props.plant));
     }
 
     let watering_action = {
-        let async_watering_history = Clone::clone(&async_watering_history);
+        let async_get_watering_history = Clone::clone(&async_get_watering_history);
         let watering_icon = Clone::clone(&watering_icon);
-        let name = Clone::clone(&name);
         move |_: MouseEvent| {
-            let name = Clone::clone(&name);
-            let async_watering_history = Clone::clone(&async_watering_history);
             watering_icon.set(WATERING_CAN_ANIMATED);
             {
                 let watering_icon = Clone::clone(&watering_icon.clone());
@@ -52,37 +54,16 @@ pub fn plant_view(props: &Props) -> Html {
                     watering_icon.set(WATERING_CAN_STATIC);
                 }).forget();
             }
-            api::do_watering(Clone::clone(&name), move |result| {
-                match result {
-                    Ok(_) => {
-                        async_watering_history.run();
-                        info!("Watered {}", name);
-                    }
-                    Err(_) => {
-                        error!("Failed to water plant: {}", name);
-                    }
-                }
-            });
+            async_watering.run();
+            async_get_watering_history.run();
         }
     };
 
     let clear_watering_history = {
-        let name = Clone::clone(&name);
-        let async_watering_history = Clone::clone(&async_watering_history);
+        let async_get_watering_history = Clone::clone(&async_get_watering_history);
         move |_: MouseEvent| {
-            let name = Clone::clone(&name);
-            let async_watering_history = Clone::clone(&async_watering_history);
-            api::clear_watering_history(Clone::clone(&name), move |result| {
-                match result {
-                    Ok(_) => {
-                        async_watering_history.run();
-                        info!("Cleared history of plant: {}", name);
-                    }
-                    Err(_) => {
-                        error!("Failed to delete history of plant: {}", name);
-                    }
-                }
-            });
+            async_clear_watering_history.run();
+            async_get_watering_history.run();
         }
     };
 
@@ -106,7 +87,7 @@ pub fn plant_view(props: &Props) -> Html {
                             <p class="title is-4">{"Gießen"}</p>
                             <p class="subtitle is-6">{ "Drücke auf das Bild, wenn du die Pflanze gegossen hast, um die Daten zu speichern:" }</p>
                             {
-                                if let Some(watering_history) = &async_watering_history.data {
+                                if let Some(watering_history) = &async_get_watering_history.data {
                                     html! { <p>{ watering_history.history.len() }</p> }
                                 }
                                 else {

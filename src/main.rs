@@ -1,6 +1,6 @@
-use gloo_net::http::Request;
 use log::info;
 use yew::prelude::*;
+use yew_hooks::{use_async, use_effect_once};
 
 use yew_playground_model::Plant;
 
@@ -12,58 +12,51 @@ mod api;
 
 #[function_component(App)]
 fn app() -> Html {
-    let plant_list = use_state_eq(|| Vec::<Plant>::new());
     let selected_plant = use_state_eq(|| Option::<Plant>::None);
+    let async_plant_list = {
+        let selected_plant = Clone::clone(&selected_plant);
+        use_async(async move {
+            let result = api::get_plants().await;
+            if let Ok(plants) = &result {
+                if selected_plant.is_none() && !plants.is_empty() {
+                    selected_plant.set(Some(Clone::clone(&plants[plants.len() - 1])));
+                }
+            }
+            result
+        })
+    };
 
     {
-        let plant_list = Clone::clone(&plant_list);
-        let selected_plant = Clone::clone(&selected_plant);
-        use_effect(move || {
-            let plant_list = Clone::clone(&plant_list);
-            let selected_plant = Clone::clone(&selected_plant);
-            if plant_list.is_empty() { // TODO: remove check a soon we known what we do
-                wasm_bindgen_futures::spawn_local(async move {
-                    let plants_endpoint = "/api/plant";
-                    let fetch_plants = Request::get(&plants_endpoint).send().await;
-                    match fetch_plants {
-                        Ok(response) => {
-                            let json: Result<Vec<Plant>, _> = response.json().await;
-
-                            match json {
-                                Ok(plants) => {
-                                    if !plants.is_empty() {
-                                        selected_plant.set(Some(Clone::clone(&plants[plants.len() - 1])));
-                                    }
-                                    plant_list.set(plants);
-                                }
-                                Err(_) => {
-                                    plant_list.set(Vec::new());
-                                },
-                            }
-                        }
-                        Err(_) => {
-                            plant_list.set(Vec::new())
-                        },
-                    }
-                });
-            }
+        let async_plant_list = Clone::clone(&async_plant_list);
+        use_effect_once(move || {
+            async_plant_list.run();
+            || {}
         });
     }
 
     let plant_changed_action = {
-        let plant_list = Clone::clone(&plant_list);
+        let async_plant_list = Clone::clone(&async_plant_list);
         let selected_plant = Clone::clone(&selected_plant);
         move |event: Event| {
-            let html_select = event.target_dyn_into::<web_sys::HtmlSelectElement>().unwrap();
-            let plant = Clone::clone(&(*plant_list)[html_select.selected_index() as usize]);
-            let name = Clone::clone(&plant.name);
-            selected_plant.set(Some(plant));
-            info!("Selected plant: {}", name);
+            if let Some(plant_list) = &async_plant_list.data {
+                let html_select = event.target_dyn_into::<web_sys::HtmlSelectElement>().unwrap();
+                let plant = Clone::clone(&plant_list[html_select.selected_index() as usize]);
+                let name = Clone::clone(&plant.name);
+                selected_plant.set(Some(plant));
+                info!("Selected plant: {}", name);
+            }
         }
     };
 
     html! {
             <div class="container hero is-fluid is-fullheight">
+                <div class="modal">
+                    <div class="modal-background"></div>
+                    <div class="modal-content">
+                        { "<!-- Any other Bulma elements you want -->" }
+                    </div>
+                    <button class="modal-close is-large" aria-label="close"></button>
+                </div>
                 <div class="title is-1">
                     <h1 id={ "projectName" }>
                         <span class={ "blackName" }>{ "T" }</span>
@@ -76,12 +69,18 @@ fn app() -> Html {
                                 <div class="select is-medium">
                                     <select onchange={plant_changed_action}>
                                         {
-                                            for plant_list.iter().cloned().map(|plant| {
-                                                html_nested!{<option value={Clone::clone(&plant.name)}>{plant.name}</option>}
-                                            })
+                                            if let Some(plant_list) = &async_plant_list.data {
+                                                plant_list.iter().cloned().map(|plant| {
+                                                    html!{<option value={Clone::clone(&plant.name)}>{plant.name}</option>}
+                                                }).collect::<Html>()
+                                            }
+                                            else {
+                                                html!{<option>{ "empty" }</option>}
+                                            }
                                         }
                                     </select>
                                 </div>
+
                             </article>
                             <div class="box p-2 subtitle">
                                 { "uploading files" }
