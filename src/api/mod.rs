@@ -1,10 +1,9 @@
 use futures::TryFutureExt;
-use reqwasm::Error;
 use reqwasm::http::{Request, Response};
 
 use yew_playground_model::PlantWateringHistory;
 
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, Debug, Clone)]
 pub enum ApiError {
 
     #[error("Unknown plant: {plant}")]
@@ -12,8 +11,8 @@ pub enum ApiError {
         plant: String
     },
 
-    #[error("Failed to parse json: {cause}")]
-    ParsingFailure { cause: Error },
+    #[error("ParsingFailure: {message}")]
+    ParsingFailure { message: String },
 
     #[error("Failed to request")]
     RequestFailure
@@ -65,7 +64,7 @@ pub async fn get_watering_history(name: String) -> Result<PlantWateringHistory, 
         200 => {
             response
                 .json::<PlantWateringHistory>()
-                .map_err(|cause| { ApiError::ParsingFailure { cause } })
+                .map_err(|cause| { ApiError::ParsingFailure { message: cause.to_string() } })
                 .await
         },
         404 => {

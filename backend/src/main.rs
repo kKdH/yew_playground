@@ -95,7 +95,7 @@ async fn watering_handler(Path(name): Path<String>, State(state): SharedAppState
 }
 
 async fn watering_history_handler(Path(name): Path<String>, State(state): SharedAppState) -> Response {
-    let mut state = state.read().unwrap();
+    let state = state.read().unwrap();
     match state.watering_histories.get(&name) {
         None => {
             (StatusCode::NOT_FOUND, format!("Unknown Plant: {name}")).into_response()
@@ -103,9 +103,7 @@ async fn watering_history_handler(Path(name): Path<String>, State(state): Shared
         Some(watering_history) => {
             (StatusCode::OK, Json(watering_history)).into_response()
         }
-    };
-
-    StatusCode::NOT_FOUND.into_response()
+    }
 }
 
 async fn delete_watering_history_handler(Path(name): Path<String>, State(state): SharedAppState) -> Response {
