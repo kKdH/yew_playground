@@ -10,17 +10,18 @@ members = [
 ]
 
 [dependencies]
-yew = { version = "0.20.0", features = ["csr"] }
-yew-router = "0.17.0"
-gloo-timers = "0.2.6"
+chrono = { version = "0.4.24", features = ["serde"] }
+futures = { version = "0.3.28", default-features = false }
 gloo-file = "0.2.3"
 gloo-net = "0.2.6"
-wasm-bindgen-futures = "0.4.34"
-reqwasm = "0.5.0"
-wasm-logger = "0.2.0"
-yew_playground_model = { path = "model" }
-web-sys = { version = "0.3.61", features = ["HtmlSelectElement"] }
+gloo-timers = "0.2.6"
 log = "0.4.17"
-chrono = { version = "0.4.24", features = ["serde"] }
+reqwasm = "0.5.0"
 thiserror = "1.0.40"
-# plotters = "0.3.1"
+wasm-bindgen-futures = "0.4.34"
+wasm-logger = "0.2.0"
+web-sys = { version = "0.3.61", features = ["HtmlSelectElement"] }
+yew = { version = "0.20.0", features = ["csr"] }
+yew-router = "0.17.0"
+
+yew_playground_model = { path = "model" }

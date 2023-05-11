@@ -1768,6 +1768,7 @@ name = "yew_playground"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "futures",
  "gloo-file",
  "gloo-net 0.2.6",
  "gloo-timers",
