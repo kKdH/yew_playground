@@ -4,6 +4,5 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-serde = "1.0.162"
 chrono = { version = "0.4.24", features = ["serde"] }
-
+serde = "1.0.162"

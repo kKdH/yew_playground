@@ -1,14 +1,14 @@
-use std::borrow::Cow;
 use gloo_timers::callback::Timeout;
 use log::{error, info};
-use reqwasm::Error;
-use reqwasm::http::Request;
 use yew::{Html, html};
 use yew::prelude::*;
-use yew_playground_model::{Plant, PlantWateringHistory};
+use yew_hooks::{use_async, use_effect_once};
 
-const wateringcan_a: &'static str = "wateringcan.png";
-const wateringcan_b: &'static str = "wateringcan3.gif";
+use yew_playground_model::Plant;
+use crate::api;
+
+const WATERING_CAN_STATIC: &'static str = "wateringcan.png";
+const WATERING_CAN_ANIMATED: &'static str = "wateringcan3.gif";
 
 #[derive(Properties, PartialEq)]
 pub struct Props {
@@ -21,25 +21,41 @@ pub struct Counter {
 
 #[function_component(PlantView)]
 pub fn plant_view(props: &Props) -> Html {
+
     let name = Clone::clone(&props.plant.name);
-    let watering_icon = use_state(|| wateringcan_a);
-    let watering_history = use_state_eq(|| PlantWateringHistory::default());
+    let watering_icon = use_state(|| WATERING_CAN_STATIC);
+
+    let async_watering_history = {
+        let name = Clone::clone(&props.plant.name);
+        use_async(api::get_watering_history(name))
+    };
+
+    {
+        let async_watering_history = Clone::clone(&async_watering_history);
+        use_effect_once(move || {
+            async_watering_history.run();
+            || {}
+        });
+    }
 
     let watering_action = {
+        let async_watering_history = Clone::clone(&async_watering_history);
         let watering_icon = Clone::clone(&watering_icon);
         let name = Clone::clone(&name);
         move |_: MouseEvent| {
             let name = Clone::clone(&name);
-            watering_icon.set(wateringcan_b);
+            let async_watering_history = Clone::clone(&async_watering_history);
+            watering_icon.set(WATERING_CAN_ANIMATED);
             {
                 let watering_icon = Clone::clone(&watering_icon.clone());
                 Timeout::new(3000, move || {
-                    watering_icon.set(wateringcan_a);
+                    watering_icon.set(WATERING_CAN_STATIC);
                 }).forget();
             }
-            crate::api::do_watering(Clone::clone(&name), move |result| {
+            api::do_watering(Clone::clone(&name), move |result| {
                 match result {
                     Ok(_) => {
+                        async_watering_history.run();
                         info!("Watered {}", name);
                     }
                     Err(_) => {
@@ -52,14 +68,14 @@ pub fn plant_view(props: &Props) -> Html {
 
     let clear_watering_history = {
         let name = Clone::clone(&name);
-        let watering_history = Clone::clone(&watering_history);
+        let async_watering_history = Clone::clone(&async_watering_history);
         move |_: MouseEvent| {
             let name = Clone::clone(&name);
-            let watering_history = Clone::clone(&watering_history);
-            crate::api::clear_watering_history(Clone::clone(&name), move |result| {
+            let async_watering_history = Clone::clone(&async_watering_history);
+            api::clear_watering_history(Clone::clone(&name), move |result| {
                 match result {
                     Ok(_) => {
-                        watering_history.set(PlantWateringHistory::default());
+                        async_watering_history.run();
                         info!("Cleared history of plant: {}", name);
                     }
                     Err(_) => {
@@ -69,24 +85,6 @@ pub fn plant_view(props: &Props) -> Html {
             });
         }
     };
-    {
-        let name = Clone::clone(&name);
-        let watering_history = Clone::clone(&watering_history);
-        use_effect(move || {
-            let watering_history = Clone::clone(&watering_history);
-            crate::api::get_history(Clone::clone(&name), move |result| {
-                match result {
-                    Ok(new_watering_history) => {
-                        watering_history.set(new_watering_history);
-                        info!("history: {:?}", watering_history);
-                    }
-                    Err(_) => {
-                        error!("Failed to fetch watering history: {}", name);
-                    }
-                }
-            });
-        });
-    }
 
     html! {
         <div class="columns">
@@ -107,7 +105,14 @@ pub fn plant_view(props: &Props) -> Html {
                         <article class="tile is-child box">
                             <p class="title is-4">{"Gießen"}</p>
                             <p class="subtitle is-6">{ "Drücke auf das Bild, wenn du die Pflanze gegossen hast, um die Daten zu speichern:" }</p>
-                            <p>{ (*watering_history).history.len() }</p>
+                            {
+                                if let Some(watering_history) = &async_watering_history.data {
+                                    html! { <p>{ watering_history.history.len() }</p> }
+                                }
+                                else {
+                                    html!(<p>{"<< error >>"}</p>)
+                                }
+                            }
                             <img onclick={watering_action} src={*watering_icon} alt="watering" title="watering can" width="100" height="100"/>
                         </article>
                     </div>

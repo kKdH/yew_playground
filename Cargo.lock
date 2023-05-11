@@ -1720,6 +1720,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "yew-hooks"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "268e2367720311f19582235f5c021702d6be8ded13b7ee8dcacc71019d055d15"
+dependencies = [
+ "gloo",
+ "js-sys",
+ "log",
+ "serde",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
+ "yew",
+]
+
+[[package]]
 name = "yew-macro"
 version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1768,6 +1784,7 @@ name = "yew_playground"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "futures",
  "gloo-file",
  "gloo-net 0.2.6",
  "gloo-timers",
@@ -1778,6 +1795,7 @@ dependencies = [
  "wasm-logger",
  "web-sys",
  "yew",
+ "yew-hooks",
  "yew-router",
  "yew_playground_model",
 ]

@@ -1,18 +1,14 @@
-mod components;
-mod api;
-
-use yew::prelude::*;
-use gloo_timers;
-use gloo_timers::callback::Timeout;
-use gloo_file::*;
 use gloo_net::http::Request;
 use log::info;
-use yew::platform::spawn_local;
-use yew_router::Routable;
+use yew::prelude::*;
+
 use yew_playground_model::Plant;
 
 use crate::components::Footer;
 use crate::components::PlantView;
+
+mod components;
+mod api;
 
 #[function_component(App)]
 fn app() -> Html {
@@ -29,7 +25,6 @@ fn app() -> Html {
                 wasm_bindgen_futures::spawn_local(async move {
                     let plants_endpoint = "/api/plant";
                     let fetch_plants = Request::get(&plants_endpoint).send().await;
-
                     match fetch_plants {
                         Ok(response) => {
                             let json: Result<Vec<Plant>, _> = response.json().await;
@@ -41,12 +36,12 @@ fn app() -> Html {
                                     }
                                     plant_list.set(plants);
                                 }
-                                Err(e) => {
+                                Err(_) => {
                                     plant_list.set(Vec::new());
                                 },
                             }
                         }
-                        Err(e) => {
+                        Err(_) => {
                             plant_list.set(Vec::new())
                         },
                     }
@@ -66,8 +61,6 @@ fn app() -> Html {
             info!("Selected plant: {}", name);
         }
     };
-
-
 
     html! {
             <div class="container hero is-fluid is-fullheight">
