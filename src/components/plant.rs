@@ -1,14 +1,12 @@
-use std::borrow::Cow;
 use gloo_timers::callback::Timeout;
 use log::{error, info};
-use reqwasm::Error;
-use reqwasm::http::Request;
 use yew::{Html, html};
 use yew::prelude::*;
+
 use yew_playground_model::{Plant, PlantWateringHistory};
 
-const wateringcan_a: &'static str = "wateringcan.png";
-const wateringcan_b: &'static str = "wateringcan3.gif";
+const WATERING_CAN_STATIC: &'static str = "wateringcan.png";
+const WATERING_CAN_ANIMATED: &'static str = "wateringcan3.gif";
 
 #[derive(Properties, PartialEq)]
 pub struct Props {
@@ -22,7 +20,7 @@ pub struct Counter {
 #[function_component(PlantView)]
 pub fn plant_view(props: &Props) -> Html {
     let name = Clone::clone(&props.plant.name);
-    let watering_icon = use_state(|| wateringcan_a);
+    let watering_icon = use_state(|| WATERING_CAN_STATIC);
     let watering_history = use_state_eq(|| PlantWateringHistory::default());
 
     let watering_action = {
@@ -30,11 +28,11 @@ pub fn plant_view(props: &Props) -> Html {
         let name = Clone::clone(&name);
         move |_: MouseEvent| {
             let name = Clone::clone(&name);
-            watering_icon.set(wateringcan_b);
+            watering_icon.set(WATERING_CAN_ANIMATED);
             {
                 let watering_icon = Clone::clone(&watering_icon.clone());
                 Timeout::new(3000, move || {
-                    watering_icon.set(wateringcan_a);
+                    watering_icon.set(WATERING_CAN_STATIC);
                 }).forget();
             }
             crate::api::do_watering(Clone::clone(&name), move |result| {
@@ -74,14 +72,14 @@ pub fn plant_view(props: &Props) -> Html {
         let watering_history = Clone::clone(&watering_history);
         use_effect(move || {
             let watering_history = Clone::clone(&watering_history);
-            crate::api::get_history(Clone::clone(&name), move |result| {
-                match result {
+            wasm_bindgen_futures::spawn_local(async move {
+                match crate::api::get_watering_history(Clone::clone(&name)).await {
                     Ok(new_watering_history) => {
                         watering_history.set(new_watering_history);
                         info!("history: {:?}", watering_history);
                     }
-                    Err(_) => {
-                        error!("Failed to fetch watering history: {}", name);
+                    Err(e) => {
+                        error!("Failed to fetch watering history of plant '{}', due to: {}", name, e);
                     }
                 }
             });

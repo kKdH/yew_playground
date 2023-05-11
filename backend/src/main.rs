@@ -1,15 +1,16 @@
 use std::collections::HashMap;
-use axum::body::{boxed, Body};
-use axum::http::{StatusCode};
-use axum::{response::IntoResponse, routing::{get, post, put}, Router, Json};
-use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV6};
-use std::str::FromStr;
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::sync::{Arc, RwLock};
+
+use axum::{Json, response::IntoResponse, Router, routing::{get, post}};
+use axum::body::{Body, boxed};
 use axum::extract::{Path, State};
+use axum::http::StatusCode;
 use axum::response::Response;
 use chrono::DateTime;
-use tower::{ServiceBuilder, ServiceExt};
+use tower::ServiceExt;
 use tower_http::services::ServeDir;
+
 use yew_playground_model::{Plant, PlantWateringHistory, WateringEvent};
 
 #[derive(Clone)]
@@ -102,7 +103,9 @@ async fn watering_history_handler(Path(name): Path<String>, State(state): Shared
         Some(watering_history) => {
             (StatusCode::OK, Json(watering_history)).into_response()
         }
-    }
+    };
+
+    StatusCode::NOT_FOUND.into_response()
 }
 
 async fn delete_watering_history_handler(Path(name): Path<String>, State(state): SharedAppState) -> Response {
