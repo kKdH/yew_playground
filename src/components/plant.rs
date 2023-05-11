@@ -102,7 +102,7 @@ pub fn plant_view(props: &Props) -> Html {
                     <div class="tile is-parent">
                         <article class="tile is-child box">
                             <p class="title is-4">{"History"}</p>
-                            <button onclick={clear_watering_history}>{ "Clear" }</button>
+                            <button class="button" onclick={clear_watering_history}>{ "Clear" }</button>
                         </article>
                     </div>
                     <div class="tile is-parent">
